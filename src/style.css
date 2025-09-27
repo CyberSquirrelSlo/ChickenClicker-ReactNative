@@ -1,0 +1,185 @@
+/* public/style.css */
+
+/* ===== Base / Reset ===== */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html, body, #root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  color: #0f172a; /* slate-900 */
+  background: #f8fafc; /* fallback */
+}
+
+/* Utility */
+.min-h-screen { min-height: 100vh; }
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+
+/* ===== Page Background (web only) ===== */
+.game-bg {
+  /* soft radial gradient from top center */
+  background:
+    radial-gradient(1200px 600px at 50% 0%,
+      #e0f2fe 0%,
+      #f8fafc 50%,
+      #f1f5f9 100%);
+}
+
+/* ===== Game Area (absolute egg layout container) ===== */
+.game-area {
+  position: relative;
+  width: min(540px, 92vw);
+  height: min(60vh, 520px);
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* help ensure eggs stay inside and look crisp */
+  overflow: hidden;
+}
+
+/* ===== Chicken (clickable) ===== */
+.chicken {
+  width: min(60vw, 340px);
+  height: auto;
+  display: block;
+  cursor: pointer; /* show it’s interactive */
+  user-select: none;
+  -webkit-user-drag: none;
+  -webkit-tap-highlight-color: transparent;
+  transition: transform 120ms ease;
+}
+.chicken:active {
+  transform: scale(0.985);
+}
+
+/* ===== Falling Eggs (emoji) ===== */
+.egg {
+  position: absolute;
+  top: 0;
+  transform: translateY(0);
+  font-size: 20px;
+  filter: drop-shadow(0 2px 2px rgba(0,0,0,.15));
+  animation-name: fall;
+  animation-duration: 3.2s;
+  animation-timing-function: linear;
+  animation-fill-mode: forwards;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+@keyframes fall {
+  0%   { transform: translateY(-10px); opacity: 0; }
+  10%  { opacity: 1; }
+  100% { transform: translateY(75vh); opacity: .95; }
+}
+
+/* Respect users who prefer reduced motion */
+@media (prefers-reduced-motion: reduce) {
+  .egg {
+    animation-duration: 1ms; /* effectively no animation */
+  }
+}
+
+/* ===== Bottom Navigation ===== */
+.bottom-nav {
+  position: sticky;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: #ffffff;
+  border-top: 1px solid #e5e7eb; /* gray-200 */
+  z-index: 10;
+}
+
+.bottom-nav ul {
+  display: flex;
+  justify-content: space-around;
+  padding: 0.5rem 0;
+  margin: 0;
+  list-style: none;
+}
+
+.navItem .navBtn {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.75rem;
+  color: #6b7280; /* gray-500 */
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 6px 8px;
+  border-radius: 10px;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+
+.navItem .navBtn:hover {
+  background: #f3f4f6; /* gray-100 */
+}
+
+.navItem .navBtn:focus-visible {
+  outline: 2px solid #93c5fd; /* blue-300 */
+  outline-offset: 2px;
+}
+
+.navItem.active .navBtn {
+  color: #111827; /* gray-900 */
+  font-weight: 600;
+}
+
+.navItem svg {
+  stroke: currentColor;
+}
+
+/* ===== Optional helpers used in the sample App.tsx ===== */
+.p-4 { padding: 1rem; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.gap-6 { gap: 1.5rem; }
+.mt-2 { margin-top: 0.5rem; }
+.text-sm { font-size: 0.875rem; }
+.text-gray-700 { color: #374151; }
+.text-2xl { font-size: 1.5rem; }
+.font-bold { font-weight: 700; }
+
+
+
+/* --- GOLDEN egg visual tweaks --- */
+.egg.golden svg {
+  display: block;
+  filter: drop-shadow(0 2px 4px rgba(161, 98, 7, .35)); /* amber-700 shadow */
+}
+.egg.normal { } /* keep default emoji look */
+
+/* --- Floating +1 / +2 label --- */
+.floattext {
+  position: absolute;
+  bottom: 45%;
+  transform: translateX(-50%) translateY(0);
+  font-weight: 800;
+  color: #111827;           /* gray-900 */
+  text-shadow: 0 2px 2px rgba(0,0,0,.15);
+  animation: floatUp 1.1s ease-out forwards;
+  pointer-events: none;
+  user-select: none;
+}
+.floattext.golden {
+  color: #a16207;           /* amber-700 */
+  text-shadow: 0 2px 4px rgba(161, 98, 7, .35);
+}
+
+@keyframes floatUp {
+  0%   { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  20%  { opacity: 1; }
+  100% { opacity: 0; transform: translateX(-50%) translateY(-40px); }
+}
