@@ -1,6 +1,6 @@
 // App.tsx
 import React, { useCallback, useMemo, useState } from 'react';
-import { SafeAreaView, View, Text, StyleSheet, Pressable, Dimensions } from 'react-native';
+import { SafeAreaView, View, Text, StyleSheet, Pressable, Dimensions, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import GameBackground from './src/components/GameBackground';
 
@@ -26,17 +26,19 @@ type SpawnedEgg = {
 
 type Floater = {
   id: string;
-  leftPct: number;      // 0..100
+  leftPct: number;      // kept for compatibility, not used for position now
   text: string;         // "+1" | "+2"
   kind: 'normal' | 'golden';
 };
+
+const CHICKEN_SIZE = 260;
 
 export default function App() {
   const [eggs, setEggs] = useState(0);
   const [active, setActive] = useState<Tab>('upgrades');
   const [spawned, setSpawned] = useState<SpawnedEgg[]>([]);
   const [floaters, setFloaters] = useState<Floater[]>([]);
-  const [areaWidth, setAreaWidth] = useState(0); // measure container width
+  const [areaWidth, setAreaWidth] = useState(0); // measured from background
 
   const screenH = Dimensions.get('window').height;
   const fallDistance = Math.min(0.75 * screenH, 600); // ~75vh like web
@@ -50,12 +52,15 @@ export default function App() {
     const delayMs = Math.floor(Math.random() * 220);
     const id = `${Date.now()}-${Math.random().toString(36).slice(2, 7)}`;
 
-    // spawn falling egg
+    // spawn falling egg (free in the whole game area)
     setSpawned((list) => [...list, { id, leftPct, delayMs, kind: isGolden ? 'golden' : 'normal' }]);
 
-    // floating text (+1 / +2)
+    // floating text (+1 / +2) — rendered ON the chicken (centered), leftPct kept but unused
     const fid = `f-${id}`;
-    setFloaters((list) => [...list, { id: fid, leftPct, text: `+${gain}`, kind: isGolden ? 'golden' : 'normal' }]);
+    setFloaters((list) => [
+      ...list,
+      { id: fid, leftPct, text: `+${gain}`, kind: isGolden ? 'golden' : 'normal' },
+    ]);
   }, []);
 
   const onEggDone = useCallback((id: string) => {
@@ -86,9 +91,9 @@ export default function App() {
         <Text style={styles.eggs}>🥚 {eggs.toLocaleString()}</Text>
       </View>
 
-      {/* Game area with gradient background */}
+      {/* Game area with your background */}
       <GameBackground onLayout={(e) => setAreaWidth(e.nativeEvent.layout.width)}>
-        {/* Falling eggs */}
+        {/* Falling eggs across the area */}
         {spawned.map((e) => (
           <AnimatedEgg
             key={e.id}
@@ -97,33 +102,51 @@ export default function App() {
             delayMs={e.delayMs}
             distance={fallDistance}
             kind={e.kind}
-            containerWidth={areaWidth}       // pass px container width
+            containerWidth={areaWidth}
             onDone={onEggDone}
           />
         ))}
 
-        {/* Floating +1 / +2 */}
-        {floaters.map((f) => (
-          <AnimatedFloatText
-            key={f.id}
-            id={f.id}
-            leftPct={f.leftPct}
-            text={f.text}
-            kind={f.kind}
-            containerWidth={areaWidth}       // pass px container width
-            onDone={onFloatDone}
-          />
-        ))}
+        {/* Chicken + floaters share one wrapper so text is ON the chicken */}
+        <View style={[styles.chickenWrap, { width: CHICKEN_SIZE, height: CHICKEN_SIZE }]}>
+          {/* Pressable fills the wrapper; ripple clipped to circle */}
+          <Pressable
+            onPress={onChickenPress}
+            accessibilityRole="button"
+            accessibilityLabel="Chicken"
+            android_ripple={{
+              color: 'rgba(0,0,0,0.08)',
+              borderless: false,
+              radius: CHICKEN_SIZE / 2,
+            }}
+            style={[
+              styles.chickenPressable,
+              {
+                width: CHICKEN_SIZE,
+                height: CHICKEN_SIZE,
+                borderRadius: CHICKEN_SIZE / 2,
+              },
+            ]}
+          >
+            <Chicken width={CHICKEN_SIZE} height={CHICKEN_SIZE} style={styles.chicken} />
+          </Pressable>
 
-        <Pressable
-          onPress={onChickenPress}
-          accessibilityRole="button"
-          accessibilityLabel="Chicken"
-          android_ripple={{ color: 'rgba(0,0,0,0.06)', borderless: true }}
-          style={styles.chickenPressable}
-        >
-          <Chicken width={260} height={260} style={styles.chicken} />
-        </Pressable>
+          {/* Floating +1 / +2 — centered ON the chicken and floating up */}
+          {floaters.map((f) => (
+            <AnimatedFloatText
+              key={f.id}
+              id={f.id}
+              leftPct={f.leftPct}
+              text={f.text}
+              kind={f.kind}
+              maxRise={Math.round(CHICKEN_SIZE * 0.45)}
+              tiltDeg={10}        // a bit more rotated
+              shiftRight={16}     // a bit more to the right
+              onDone={onFloatDone}
+            />
+          ))}
+        </View>
+
         <Text style={styles.hint}>Tap the chicken!</Text>
       </GameBackground>
 
@@ -154,18 +177,28 @@ export default function App() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8fafc' },
+  container: { flex: 1, backgroundColor: 'transparent' },
+
   hud: { paddingHorizontal: 16, paddingVertical: 12, alignItems: 'center', justifyContent: 'center' },
   eggs: { fontSize: 28, fontWeight: '800' },
 
-  gameArea: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    overflow: 'hidden', // keep eggs inside
+  // wrapper that positions chicken and floaters together
+  chickenWrap: {
+    alignSelf: 'center',
+    position: 'relative',
+    marginTop: 8,
+    marginBottom: 4,
   },
 
-  chickenPressable: { borderRadius: 9999, padding: 8 },
+  // pressable that fills wrapper and clips ripple to a circle
+  chickenPressable: {
+    position: 'absolute',
+    left: 0, right: 0, top: 0, bottom: 0,
+    alignItems: 'center',
+    justifyContent: 'center',
+    overflow: Platform.OS === 'android' ? 'hidden' : 'visible', // clip ripple on Android
+  },
+
   chicken: { alignSelf: 'center' },
   hint: { marginTop: 8, color: '#6b7280' },
 
@@ -180,7 +213,7 @@ const styles = StyleSheet.create({
   },
   navItem: { alignItems: 'center', gap: 4, paddingHorizontal: 8, paddingVertical: 6, borderRadius: 10 },
   navItemActive: { backgroundColor: '#f3f4f6' },
-  navItemPressed: { opacity: 0.8 },
+  navItemPressed: { opacity: 0.85 },
   navLabel: { fontSize: 12, color: '#6b7280' },
   navLabelActive: { color: '#111827', fontWeight: '600' },
 });
