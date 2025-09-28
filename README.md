@@ -5,6 +5,9 @@ Tapping the chicken increases the egg counter.
 
 ## Quick start
 
+### Prerequisites
+- [Node.js](https://nodejs.org/en/download) (LTS recommended)
+
 ```bash
 npm i -g expo-cli # optional, if you prefer npx you can skip
 npm i
